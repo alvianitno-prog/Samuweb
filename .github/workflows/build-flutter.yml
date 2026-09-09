@@ -61,11 +61,11 @@ jobs:
         run: |
           ANDROID_DIR="android"
 
-          # ── 1. Gradle Wrapper → Upgrade ke 8.11.1 (Syarat Flutter/AGP Modern) ──
+          # ── 1. Gradle Wrapper → Upgrade ke 8.14 (Mendukung Flutter Stable Terbaru) ──
           WRAPPER="$ANDROID_DIR/gradle/wrapper/gradle-wrapper.properties"
           if [ -f "$WRAPPER" ]; then
-            sed -i 's|gradle-[0-9][0-9.]*-[a-z]*\.zip|gradle-8.11.1-bin.zip|g' "$WRAPPER"
-            echo "[OK] Gradle wrapper → 8.11.1"
+            sed -i 's|gradle-[0-9][0-9.]*-[a-z]*\.zip|gradle-8.14-bin.zip|g' "$WRAPPER"
+            echo "[OK] Gradle wrapper → 8.14"
           fi
 
           # ── 2. Handle Groovy (build.gradle) & Kotlin Script (build.gradle.kts) ──
@@ -90,7 +90,7 @@ jobs:
               TARGET_SDK=$CURRENT
             fi
 
-            # Update compileSdk / targetSdk untuk format Groovy maupun KTS
+            # Update compileSdk / targetSdk untuk Groovy maupun KTS
             sed -i "s/compileSdkVersion\s\+[0-9]\+/compileSdkVersion $TARGET_SDK/g" "$APP_GRADLE"
             sed -i "s/compileSdk\s\+[0-9]\+/compileSdk $TARGET_SDK/g"               "$APP_GRADLE"
             sed -i "s/compileSdk\s*=\s*[0-9]\+/compileSdk = $TARGET_SDK/g"          "$APP_GRADLE"
@@ -119,7 +119,7 @@ jobs:
       - name: "[ZIP] Build APK"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
-        run: flutter build apk --${{ steps.parse.outputs.build_type }} --no-tree-shake-icons
+        run: flutter build apk --${{ steps.parse.outputs.build_type }} --no-tree-shake-icons --android-skip-build-dependency-validation
 
       - name: "[ZIP] Upload APK artifact"
         if: steps.parse.outputs.mode == 'zip'
@@ -143,7 +143,7 @@ jobs:
         if: steps.parse.outputs.mode == 'url'
         run: |
           cat > webview_project/lib/main.dart << 'DART'
-          import 'package0:flutter/material.dart';
+          import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
 
           void main() => runApp(const MyApp());
@@ -217,7 +217,7 @@ jobs:
       - name: "[URL] Build APK"
         if: steps.parse.outputs.mode == 'url'
         working-directory: webview_project
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
       - name: "[URL] Upload APK artifact"
         if: steps.parse.outputs.mode == 'url'
