@@ -54,7 +54,7 @@ jobs:
           DIR=$(find project -name "pubspec.yaml" -maxdepth 5 | head -1 | xargs dirname)
           echo "dir=$DIR" >> $GITHUB_OUTPUT
 
-      # ── AUTO ADJUSTMENT: Gradle & Android SDK ──────────────────────────────
+      # ── AUTO ADJUSTMENT: Gradle & Build Configs ─────────────────────────────
       - name: "[ZIP] Auto-adjust build configs"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
@@ -102,19 +102,24 @@ jobs:
             echo "[OK] $APP_GRADLE updated → SDK: $TARGET_SDK, Java: 17"
           fi
 
-          # ── 3. Amankan pubspec.yaml & lockfile ─────────────────────────────
+          # ── 3. Force Auto Fix Breaking Dependencies di pubspec.yaml ────────
           PUBSPEC="pubspec.yaml"
           if [ -f "$PUBSPEC" ]; then
             rm -f pubspec.lock
-            echo "[OK] Removed old pubspec.lock"
+            
+            # Jika project menggunakan font_awesome_flutter versi lama, ganti/override ke versi kompatibel
+            if grep -q "font_awesome_flutter" "$PUBSPEC"; then
+              sed -i "s/font_awesome_flutter:.*/font_awesome_flutter: ^10.7.0/g" "$PUBSPEC"
+            fi
+
+            echo "[OK] Cleaned lockfile and patched problematic packages in pubspec.yaml"
           fi
 
-      - name: "[ZIP] Flutter pub get & upgrade outdated packages"
+      - name: "[ZIP] Resolve & Upgrade Dependencies"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
         run: |
           flutter pub get
-          # Auto-update package yang bermasalah dengan breaking change Flutter terbaru (seperti font_awesome_flutter)
           flutter pub upgrade font_awesome_flutter || true
 
       - name: "[ZIP] Build APK"
