@@ -25,7 +25,7 @@ jobs:
           echo "app_name=$(jq -r '.appName // "MyApp"' payload.json)"  >> $GITHUB_OUTPUT
           echo "icon_url=$(jq -r '.iconUrl // ""' payload.json)"       >> $GITHUB_OUTPUT
 
-      # ── 2. Setup Java & Flutter (Stable Terbaru) ───────────────────────────
+      # ── 2. Setup Java & Flutter ─────────────────────────────────────────────
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -54,21 +54,21 @@ jobs:
           DIR=$(find project -name "pubspec.yaml" -maxdepth 5 | head -1 | xargs dirname)
           echo "dir=$DIR" >> $GITHUB_OUTPUT
 
-      # ── AUTO ADJUSTMENT: Kompatibilitas Universal (Support Semua Versi) ──────
-      - name: "[ZIP] Auto-adjust build configs & SDK constraints"
+      # ── AUTO ADJUSTMENT: Gradle & Android SDK ──────────────────────────────
+      - name: "[ZIP] Auto-adjust build configs"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
         run: |
           ANDROID_DIR="android"
 
-          # ── 1. Gradle Wrapper → Upgrade ke 8.14 (Mendukung Flutter Stable Terbaru) ──
+          # ── 1. Gradle Wrapper → Upgrade ke 8.14 ─────────────────────────────
           WRAPPER="$ANDROID_DIR/gradle/wrapper/gradle-wrapper.properties"
           if [ -f "$WRAPPER" ]; then
             sed -i 's|gradle-[0-9][0-9.]*-[a-z]*\.zip|gradle-8.14-bin.zip|g' "$WRAPPER"
             echo "[OK] Gradle wrapper → 8.14"
           fi
 
-          # ── 2. Handle Groovy (build.gradle) & Kotlin Script (build.gradle.kts) ──
+          # ── 2. Handle Groovy & Kotlin Script build.gradle ───────────────────
           APP_GRADLE=""
           if [ -f "$ANDROID_DIR/app/build.gradle" ]; then
             APP_GRADLE="$ANDROID_DIR/app/build.gradle"
@@ -90,7 +90,6 @@ jobs:
               TARGET_SDK=$CURRENT
             fi
 
-            # Update compileSdk / targetSdk untuk Groovy maupun KTS
             sed -i "s/compileSdkVersion\s\+[0-9]\+/compileSdkVersion $TARGET_SDK/g" "$APP_GRADLE"
             sed -i "s/compileSdk\s\+[0-9]\+/compileSdk $TARGET_SDK/g"               "$APP_GRADLE"
             sed -i "s/compileSdk\s*=\s*[0-9]\+/compileSdk = $TARGET_SDK/g"          "$APP_GRADLE"
@@ -98,23 +97,23 @@ jobs:
             sed -i "s/targetSdk\s\+[0-9]\+/targetSdk $TARGET_SDK/g"                 "$APP_GRADLE"
             sed -i "s/targetSdk\s*=\s*[0-9]\+/targetSdk = $TARGET_SDK/g"            "$APP_GRADLE"
 
-            # Compatibility Java 17
             sed -i 's/JavaVersion\.VERSION_1_[0-9]\+/JavaVersion.VERSION_17/g' "$APP_GRADLE"
             sed -i 's/JavaVersion\.VERSION_[0-9]\+/JavaVersion.VERSION_17/g'   "$APP_GRADLE"
             echo "[OK] $APP_GRADLE updated → SDK: $TARGET_SDK, Java: 17"
           fi
 
-          # ── 3. Fix pubspec.yaml SDK Bounds ─────────────────────────────────
+          # ── 3. Amankan pubspec.yaml tanpa merusak SDK constraint ───────────
           PUBSPEC="pubspec.yaml"
           if [ -f "$PUBSPEC" ]; then
-            sed -i -E "s/sdk:\s*['\"][^'\"]*['\"]/sdk: '>=3.0.0 <4.0.0'/g" "$PUBSPEC"
-            echo "[OK] Adjusted pubspec sdk constraint to '>=3.0.0 <4.0.0'"
+            # Hapus pubspec.lock bawaan user agar tidak terjadi konflik dependency lockfile
+            rm -f pubspec.lock
+            echo "[OK] Removed old pubspec.lock"
           fi
 
       - name: "[ZIP] Flutter pub get"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
-        run: flutter pub get || flutter pub upgrade --major-versions
+        run: flutter pub get
 
       - name: "[ZIP] Build APK"
         if: steps.parse.outputs.mode == 'zip'
@@ -130,7 +129,7 @@ jobs:
           retention-days: 1
 
       # ════════════════════════════════════════════════════════════════════════
-      # MODE URL — Web2APK: wrap website ke dalam Flutter WebView APK
+      # MODE URL — Web2APK
       # ════════════════════════════════════════════════════════════════════════
       - name: "[URL] Create Flutter WebView project"
         if: steps.parse.outputs.mode == 'url'
