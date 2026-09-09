@@ -61,7 +61,7 @@ jobs:
         run: |
           ANDROID_DIR="android"
 
-          # ── 1. Gradle Wrapper → Upgrade ke 8.14 (Mendukung Flutter Stable) ────
+          # ── 1. Gradle Wrapper → Upgrade ke 8.14 ─────────────────────────────
           WRAPPER="$ANDROID_DIR/gradle/wrapper/gradle-wrapper.properties"
           if [ -f "$WRAPPER" ]; then
             sed -i 's|gradle-[0-9][0-9.]*-[a-z]*\.zip|gradle-8.14-bin.zip|g' "$WRAPPER"
@@ -102,22 +102,33 @@ jobs:
             echo "[OK] $APP_GRADLE updated → SDK: $TARGET_SDK, Java: 17"
           fi
 
-          # ── 3. Bersihkan lockfile lama ─────────────────────────────────────
+          # ── 3. Paksa Inject Dependency Overrides Menggunakan Python (Safe YAML Parser) ──
           PUBSPEC="pubspec.yaml"
           if [ -f "$PUBSPEC" ]; then
             rm -f pubspec.lock
-            echo "[OK] Removed old pubspec.lock"
+            
+            python3 -c "
+import yaml
+
+with open('$PUBSPEC', 'r') as f:
+    data = yaml.safe_load(f) or {}
+
+if 'dependency_overrides' not in data or not isinstance(data['dependency_overrides'], dict):
+    data['dependency_overrides'] = {}
+
+data['dependency_overrides']['font_awesome_flutter'] = '^10.7.0'
+
+with open('$PUBSPEC', 'w') as f:
+    yaml.dump(data, f, default_flow_style=False)
+"
+            echo "[OK] Injected font_awesome_flutter override cleanly via Python"
           fi
 
       - name: "[ZIP] Flutter pub get"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
         run: |
-          # Override package bermasalah (seperti font_awesome_flutter) via CLI resmi agar tidak merusak struktur YAML
-          if grep -q "font_awesome_flutter" pubspec.yaml; then
-            flutter pub add font_awesome_flutter:^10.7.0 --override || true
-          fi
-          flutter pub get
+          flutter pub get || flutter pub upgrade --major-versions
 
       - name: "[ZIP] Build APK"
         if: steps.parse.outputs.mode == 'zip'
