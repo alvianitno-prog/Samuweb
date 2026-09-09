@@ -102,18 +102,20 @@ jobs:
             echo "[OK] $APP_GRADLE updated → SDK: $TARGET_SDK, Java: 17"
           fi
 
-          # ── 3. Amankan pubspec.yaml tanpa merusak SDK constraint ───────────
+          # ── 3. Amankan pubspec.yaml & lockfile ─────────────────────────────
           PUBSPEC="pubspec.yaml"
           if [ -f "$PUBSPEC" ]; then
-            # Hapus pubspec.lock bawaan user agar tidak terjadi konflik dependency lockfile
             rm -f pubspec.lock
             echo "[OK] Removed old pubspec.lock"
           fi
 
-      - name: "[ZIP] Flutter pub get"
+      - name: "[ZIP] Flutter pub get & upgrade outdated packages"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
-        run: flutter pub get
+        run: |
+          flutter pub get
+          # Auto-update package yang bermasalah dengan breaking change Flutter terbaru (seperti font_awesome_flutter)
+          flutter pub upgrade font_awesome_flutter || true
 
       - name: "[ZIP] Build APK"
         if: steps.parse.outputs.mode == 'zip'
