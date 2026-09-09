@@ -1,4 +1,4 @@
-Name: Build Flutter APK
+name: Build Flutter APK
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable' # Menggunakan Flutter Stable terbaru agar selalu mendukung Dart SDK versi tinggi
+          channel: 'stable'
           cache: true
 
       # ════════════════════════════════════════════════════════════════════════
@@ -105,7 +105,6 @@ jobs:
           # ── 4. Fix pubspec.yaml SDK Bounds ─────────────────────────────────
           PUBSPEC="pubspec.yaml"
           if [ -f "$PUBSPEC" ]; then
-            # Hapus / Longgarkan batasan upper bound agar kompatibel dengan Dart 3.x dan 4.x
             sed -i -E "s/sdk:\s*['\"][^'\"]*['\"]/sdk: '>=3.0.0 <4.0.0'/g" "$PUBSPEC"
             echo "[OK] Adjusted pubspec sdk constraint to '>=3.0.0 <4.0.0'"
           fi
@@ -165,7 +164,7 @@ jobs:
             State<WebViewPage> createState() => _WebViewPageState();
           }
 
-          class _WebViewPageState import State<WebViewPage> {
+          class _WebViewPageState extends State<WebViewPage> {
             late final WebViewController _controller;
             @override
             void initState() {
