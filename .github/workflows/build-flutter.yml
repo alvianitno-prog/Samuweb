@@ -54,7 +54,7 @@ jobs:
           DIR=$(find project -name "pubspec.yaml" -maxdepth 5 | head -1 | xargs dirname)
           echo "dir=$DIR" >> $GITHUB_OUTPUT
 
-      # ── AUTO ADJUSTMENT: Gradle & Build Configs ─────────────────────────────
+      # ── AUTO ADJUSTMENT: Gradle, SDK, & Dependency Overrides ────────────────
       - name: "[ZIP] Auto-adjust build configs"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
@@ -102,25 +102,27 @@ jobs:
             echo "[OK] $APP_GRADLE updated → SDK: $TARGET_SDK, Java: 17"
           fi
 
-          # ── 3. Force Auto Fix Breaking Dependencies di pubspec.yaml ────────
+          # ── 3. Force Inject Dependency Overrides ke pubspec.yaml ─────────────
           PUBSPEC="pubspec.yaml"
           if [ -f "$PUBSPEC" ]; then
             rm -f pubspec.lock
-            
-            # Jika project menggunakan font_awesome_flutter versi lama, ganti/override ke versi kompatibel
-            if grep -q "font_awesome_flutter" "$PUBSPEC"; then
-              sed -i "s/font_awesome_flutter:.*/font_awesome_flutter: ^10.7.0/g" "$PUBSPEC"
+
+            # Apabila dependency_overrides belum ada, tambahkan section-nya
+            if ! grep -q "dependency_overrides:" "$PUBSPEC"; then
+              echo "" >> "$PUBSPEC"
+              echo "dependency_overrides:" >> "$PUBSPEC"
             fi
 
-            echo "[OK] Cleaned lockfile and patched problematic packages in pubspec.yaml"
+            # Paksa inject font_awesome_flutter versi terbaru yang sudah mendukung final class IconData
+            echo "  font_awesome_flutter: ^10.7.0" >> "$PUBSPEC"
+
+            echo "[OK] Injected dependency_overrides for font_awesome_flutter"
           fi
 
-      - name: "[ZIP] Resolve & Upgrade Dependencies"
+      - name: "[ZIP] Flutter pub get"
         if: steps.parse.outputs.mode == 'zip'
         working-directory: ${{ steps.root_zip.outputs.dir }}
-        run: |
-          flutter pub get
-          flutter pub upgrade font_awesome_flutter || true
+        run: flutter pub get
 
       - name: "[ZIP] Build APK"
         if: steps.parse.outputs.mode == 'zip'
